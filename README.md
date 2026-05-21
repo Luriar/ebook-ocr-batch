@@ -1,8 +1,8 @@
-# 📚 ebook-ocr-batch
+# ebook-ocr-batch
 
 eBook 스크린샷을 Google Cloud Vision API로 OCR 처리하여 텍스트로 변환하는 도구입니다.
 
-## ✨ 특징
+## 특징
 
 - **한국어 + 영어 혼용** 자동 인식 (AWS 전문 용어 등)
 - **`document_text_detection`** 사용 — 밀집 텍스트(책/문서)에 최적화된 OCR
@@ -11,7 +11,7 @@ eBook 스크린샷을 Google Cloud Vision API로 OCR 처리하여 텍스트로 �
 - **개별 저장** 또는 **하나의 파일로 병합** 선택 가능
 - 실시간 진행률 표시 (ETA 포함)
 
-## 🛠️ 사전 준비
+## 사전 준비
 
 ### 1. Google Cloud Vision API 활성화
 
@@ -28,7 +28,7 @@ $env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\your-key.json"
 [System.Environment]::SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", "C:\path\to\your-key.json", "User")
 ```
 
-> **💰 비용**: 월 **1,000건 무료**. 595페이지 책 한 권은 무료 한도 안에 들어갑니다.
+> **비용**: 월 **1,000건 무료**. 595페이지 책 한 권은 무료 한도 안에 들어갑니다.
 
 ### 2. 패키지 설치
 
@@ -36,7 +36,7 @@ $env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\your-key.json"
 pip install -r requirements.txt
 ```
 
-## 🚀 사용법
+## 사용법
 
 ### 기본 사용 (개별 텍스트 파일로 저장)
 
@@ -88,11 +88,11 @@ python ocr.py --help
 | `--workers` | 동시 처리 스레드 수 | `4` |
 | `--delay` | API 호출 간 대기(초) | `0.1` |
 
-## 📁 지원 이미지 형식
+## 지원 이미지 형식
 
 PNG, JPG, JPEG, BMP, TIFF, WEBP
 
-## 📂 폴더 구조 예시
+## 폴더 구조 예시
 
 ```
 screenshots/
@@ -112,12 +112,12 @@ screenshots/
 └── ...
 ```
 
-## ⚠️ 주의사항
+## 주의사항
 
 - **Google Cloud 서비스 계정 키(JSON)는 절대 공개 저장소에 커밋하지 마세요.** `.gitignore`에 이미 `*.json`이 포함되어 있습니다.
 - 월 1,000건 초과 시 [Cloud Vision 가격 정책](https://cloud.google.com/vision/pricing)을 확인하세요.
 - 4K 해상도 스크린샷을 사용하면 OCR 정확도가 극대화됩니다.
 
-## 📜 License
+## License
 
 MIT License
