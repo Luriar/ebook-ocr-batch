@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+venv/
+.venv/
+env/
+
+# Google Cloud credentials (절대 커밋 금지!)
+*.json
+!config.example.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 캡처 이미지 & OCR 결과 (용량이 크므로 제외)
+screenshots/
+output/
+ocr_output/
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.tiff
+*.tif
