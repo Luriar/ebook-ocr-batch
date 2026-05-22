@@ -154,9 +154,11 @@ def create_searchable_pdf(
         # ── 1) 이미지 레이어 PDF ──
         img_buf = io.BytesIO()
         img_canvas = canvas.Canvas(img_buf, pagesize=(img_width, img_height))
-        img_canvas.drawImage(
-            str(img_path), 0, 0, width=img_width, height=img_height
-        )
+        from reportlab.lib.utils import ImageReader
+        with Image.open(img_path) as img:
+            img_canvas.drawImage(
+                ImageReader(img), 0, 0, width=img_width, height=img_height
+            )
         img_canvas.showPage()
         img_canvas.save()
         img_buf.seek(0)
