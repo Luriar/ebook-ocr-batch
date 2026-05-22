@@ -6,9 +6,16 @@ Google Cloud Vision API를 사용하여 캡처한 eBook 이미지를 OCR 처리�
 
 import argparse
 import io
+import json
 import os
 import re
 import sys
+
+# Force UTF-8 output (fixes GBK/CP949 terminal encoding issues)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 import time
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -23,14 +30,14 @@ except ImportError:
 try:
     from google.cloud import vision
 except ImportError:
-    print("❌ google-cloud-vision 패키지가 설치되지 않았습니다.")
+    print("[ERROR] google-cloud-vision 패키지가 설치되지 않았습니다.")
     print("   pip install google-cloud-vision")
     sys.exit(1)
 
 try:
     from PIL import Image
 except ImportError:
-    print("❌ Pillow 패키지가 설치되지 않았습니다.")
+    print("[ERROR] Pillow 패키지가 설치되지 않았습니다.")
     print("   pip install Pillow")
     sys.exit(1)
 
@@ -40,7 +47,7 @@ try:
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 except ImportError:
-    print("❌ reportlab 패키지가 설치되지 않았습니다.")
+    print("[ERROR] reportlab 패키지가 설치되지 않았습니다.")
     print("   pip install reportlab")
     sys.exit(1)
 
@@ -50,7 +57,7 @@ except ImportError:
     try:
         from pypdf import PdfWriter, PdfReader
     except ImportError:
-        print("❌ PyPDF2 또는 pypdf 패키지가 설치되지 않았습니다.")
+        print("[ERROR] PyPDF2 또는 pypdf 패키지가 설치되지 않았습니다.")
         print("   pip install pypdf")
         sys.exit(1)
 
@@ -135,7 +142,7 @@ def create_searchable_pdf(
     writer = PdfWriter()
     total = len(ocr_results)
 
-    print(f"\n📄 Searchable PDF 생성 중... ({total}페이지)")
+    print(f"\n[PDF] Searchable PDF 생성 중... ({total}페이지)")
 
     for idx in sorted(ocr_results.keys()):
         data = ocr_results[idx]
@@ -176,18 +183,19 @@ def create_searchable_pdf(
 
             txt_canvas.setFont(korean_font, font_size)
 
-            # 텍스트 너비를 바운딩 박스에 맞춰 수평 스케일 조정
+            # TextObject를 사용하여 수평 스케일 조정
             reported_width = txt_canvas.stringWidth(text, korean_font, font_size)
             if reported_width > 0:
                 h_scale = (w / reported_width) * 100
             else:
                 h_scale = 100
 
-            txt_canvas.saveState()
-            txt_canvas.translate(x, y)
-            txt_canvas.setHorizScale(h_scale)
-            txt_canvas.drawString(0, 0, text)
-            txt_canvas.restoreState()
+            text_obj = txt_canvas.beginText()
+            text_obj.setTextOrigin(x, y)
+            text_obj.setFont(korean_font, font_size)
+            text_obj.setHorizScale(h_scale)
+            text_obj.textOut(text)
+            txt_canvas.drawText(text_obj)
 
         txt_canvas.showPage()
         txt_canvas.save()
@@ -200,7 +208,7 @@ def create_searchable_pdf(
 
         # 진행률
         done = list(sorted(ocr_results.keys())).index(idx) + 1
-        print(f"  📄 [{done}/{total}] {img_path.name}", end="\r")
+        print(f"  [PDF] [{done}/{total}] {img_path.name}", end="\r")
 
     # PDF 저장
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -208,8 +216,8 @@ def create_searchable_pdf(
         writer.write(f)
 
     file_size_mb = output_path.stat().st_size / (1024 * 1024)
-    print(f"\n\n✅ Searchable PDF 저장 완료: {output_path}")
-    print(f"   📦 파일 크기: {file_size_mb:.1f} MB")
+    print(f"\n\n[DONE] Searchable PDF 저장 완료: {output_path}")
+    print(f"   파일 크기: {file_size_mb:.1f} MB")
 
 
 # ─────────────────────────────────────────────
@@ -236,6 +244,52 @@ def natural_sort_key(text: str):
 
 
 # ─────────────────────────────────────────────
+# JSON 캐시
+# ─────────────────────────────────────────────
+
+CACHE_FILENAME = "ocr_cache.json"
+
+
+def save_cache(results: dict, output_dir: Path):
+    """OCR 결과를 JSON 캐시로 저장합니다."""
+    cache_data = {}
+    for idx, data in results.items():
+        cache_data[str(idx)] = {
+            "image_path": str(data["image_path"]),
+            "text": data["text"],
+            "word_boxes": data["word_boxes"],
+            "img_width": data["img_width"],
+            "img_height": data["img_height"],
+        }
+    cache_path = output_dir / CACHE_FILENAME
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(cache_data, f, ensure_ascii=False)
+    cache_size_mb = cache_path.stat().st_size / (1024 * 1024)
+    print(f"[CACHE] OCR cache saved: {cache_path} ({cache_size_mb:.1f} MB)")
+
+
+def load_cache(output_dir: Path) -> dict[int, dict]:
+    """JSON 캐시에서 OCR 결과를 로드합니다."""
+    cache_path = output_dir / CACHE_FILENAME
+    if not cache_path.exists():
+        print(f"[ERROR] cache not found: {cache_path}")
+        sys.exit(1)
+    with open(cache_path, "r", encoding="utf-8") as f:
+        cache_data = json.load(f)
+    results = {}
+    for idx_str, data in cache_data.items():
+        results[int(idx_str)] = {
+            "image_path": Path(data["image_path"]),
+            "text": data["text"],
+            "word_boxes": data["word_boxes"],
+            "img_width": data["img_width"],
+            "img_height": data["img_height"],
+        }
+    print(f"[CACHE] Loaded {len(results)} pages from cache")
+    return results
+
+
+# ─────────────────────────────────────────────
 # 메인 처리
 # ─────────────────────────────────────────────
 
@@ -258,13 +312,13 @@ def process_batch(
     results: dict[int, dict] = {}
     failed: list[tuple[Path, str]] = []
 
-    print(f"\n📚 총 {total}개 이미지 OCR 시작")
-    print(f"📂 입력: {image_files[0].parent}")
-    print(f"📁 출력: {output_dir}")
+    print(f"\n[OCR] 총 {total}개 이미지 OCR 시작")
+    print(f"[IN]  입력: {image_files[0].parent}")
+    print(f"[OUT] 출력: {output_dir}")
     if pdf:
-        print(f"📄 PDF: {pdf_name}")
-    print(f"⚙️  동시 처리: {max_workers}개 스레드")
-    print(f"{'─' * 50}")
+        print(f"[PDF] PDF: {pdf_name}")
+    print(f"[OPT] 동시 처리: {max_workers}개 스레드")
+    print(f"{'=' * 50}")
 
     start_time = time.time()
     completed = 0
@@ -297,7 +351,7 @@ def process_batch(
 
             if error:
                 failed.append((img_path, error))
-                status = "❌"
+                status = "[FAIL]"
             else:
                 results[idx] = {
                     "image_path": img_path,
@@ -310,7 +364,7 @@ def process_batch(
                 if not merge and not pdf:
                     txt_path = output_dir / f"{img_path.stem}.txt"
                     txt_path.write_text(text, encoding="utf-8")
-                status = "✅"
+                status = "[ OK ]"
 
             elapsed = time.time() - start_time
             rate = completed / elapsed if elapsed > 0 else 0
@@ -328,11 +382,15 @@ def process_batch(
             for idx in sorted(results.keys()):
                 data = results[idx]
                 f.write(f"{'=' * 60}\n")
-                f.write(f"📄 Page {idx + 1} ({data['image_path'].name})\n")
+                f.write(f"Page {idx + 1} ({data['image_path'].name})\n")
                 f.write(f"{'=' * 60}\n\n")
                 f.write(data["text"])
                 f.write("\n\n")
-        print(f"\n📝 병합 텍스트 저장: {merged_path}")
+        print(f"\n[DONE] 병합 텍스트 저장: {merged_path}")
+
+    # OCR 캐시 저장 (PDF 생성 실패 시 --from-cache로 재시도 가능)
+    if results:
+        save_cache(results, output_dir)
 
     # Searchable PDF 생성
     if pdf:
@@ -341,16 +399,16 @@ def process_batch(
 
     # 결과 요약
     elapsed_total = time.time() - start_time
-    print(f"\n{'═' * 50}")
-    print(f"✅ 완료: {len(results)}개 성공")
+    print(f"\n{'=' * 50}")
+    print(f"[DONE] 완료: {len(results)}개 성공")
     if failed:
-        print(f"❌ 실패: {len(failed)}개")
+        print(f"[FAIL] 실패: {len(failed)}개")
         for fpath, err in failed:
             print(f"   - {fpath.name}: {err}")
-    print(f"⏱️  총 소요시간: {elapsed_total:.1f}초 ({elapsed_total / 60:.1f}분)")
+    print(f"[TIME] 총 소요시간: {elapsed_total:.1f}초 ({elapsed_total / 60:.1f}분)")
     if elapsed_total > 0:
-        print(f"📊 평균 처리속도: {len(results) / elapsed_total:.1f}장/초")
-    print(f"{'═' * 50}")
+        print(f"[STAT] 평균 처리속도: {len(results) / elapsed_total:.1f}장/초")
+    print(f"{'=' * 50}")
 
     return results, failed
 
@@ -423,41 +481,65 @@ def main():
         default=0.1,
         help="API 호출 간 대기 시간(초) (기본: 0.1)",
     )
+    parser.add_argument(
+        "--from-cache",
+        action="store_true",
+        help="OCR API 호출 없이 캐시된 결과로 PDF/텍스트 생성",
+    )
 
     args = parser.parse_args()
 
     input_dir = Path(args.input_dir).resolve()
     if not input_dir.is_dir():
-        print(f"❌ 입력 폴더를 찾을 수 없습니다: {input_dir}")
+        print(f"[ERROR] input folder not found: {input_dir}")
         sys.exit(1)
 
     output_dir = Path(args.output_dir).resolve() if args.output_dir else input_dir / "ocr_output"
 
+    # --from-cache: API 호출 없이 캐시에서 PDF 생성
+    if args.from_cache:
+        image_files = get_image_files(input_dir)
+        results = load_cache(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        if args.pdf:
+            pdf_path = output_dir / args.pdf_name
+            create_searchable_pdf(image_files, results, pdf_path)
+        if args.merge:
+            merged_path = output_dir / args.merge_name
+            with open(merged_path, "w", encoding="utf-8") as f:
+                for idx in sorted(results.keys()):
+                    data = results[idx]
+                    f.write(f"{'=' * 60}\n")
+                    f.write(f"Page {idx + 1} ({data['image_path'].name})\n")
+                    f.write(f"{'=' * 60}\n\n")
+                    f.write(data["text"])
+                    f.write("\n\n")
+            print(f"[DONE] merged text saved: {merged_path}")
+        print("[DONE] finished (from cache, no API calls)")
+        return
+
     # 환경 변수 확인
     if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        print("⚠️  GOOGLE_APPLICATION_CREDENTIALS 환경 변수가 설정되지 않았습니다.")
-        print("   서비스 계정 키 JSON 파일 경로를 설정해주세요:")
+        print("[WARN] GOOGLE_APPLICATION_CREDENTIALS not set.")
         print('   set GOOGLE_APPLICATION_CREDENTIALS="path/to/key.json"')
-        print()
-        print("   또는 gcloud CLI로 인증하세요:")
-        print("   gcloud auth application-default login")
+        print("   or: gcloud auth application-default login")
         sys.exit(1)
 
     image_files = get_image_files(input_dir)
     if not image_files:
-        print(f"❌ 이미지 파일을 찾을 수 없습니다: {input_dir}")
-        print("   지원 형식: PNG, JPG, JPEG, BMP, TIFF, WEBP")
+        print(f"[ERROR] no image files found: {input_dir}")
+        print("   supported: PNG, JPG, JPEG, BMP, TIFF, WEBP")
         sys.exit(1)
 
     # --pdf도 --merge도 없으면 기본 개별 txt
     if not args.pdf and not args.merge:
-        print("💡 모드가 지정되지 않았습니다. 개별 텍스트 파일로 저장합니다.")
-        print("   Searchable PDF를 원하시면: --pdf")
-        print("   텍스트 병합을 원하시면:    --merge")
+        print("[INFO] no mode specified. saving individual text files.")
+        print("   for Searchable PDF: --pdf")
+        print("   for merged text:    --merge")
 
-    print(f"\n🔍 발견된 이미지: {len(image_files)}개")
-    print(f"   첫 번째: {image_files[0].name}")
-    print(f"   마지막:  {image_files[-1].name}")
+    print(f"\n[SCAN] found {len(image_files)} images")
+    print(f"   first: {image_files[0].name}")
+    print(f"   last:  {image_files[-1].name}")
 
     process_batch(
         image_files=image_files,
