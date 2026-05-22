@@ -1,14 +1,14 @@
 # ebook-ocr-batch
 
-eBook 스크린샷을 Google Cloud Vision API로 OCR 처리하여 텍스트로 변환하는 도구입니다.
+eBook 스크린샷을 Google Cloud Vision API로 OCR 처리하여 **텍스트 선택/검색이 가능한 Searchable PDF**로 변환하는 도구입니다.
 
 ## 특징
 
+- **Searchable PDF 생성** — 원본 이미지 위에 투명 텍스트 레이어를 입혀 텍스트 드래그/복사/검색 가능
 - **한국어 + 영어 혼용** 자동 인식 (AWS 전문 용어 등)
-- **`document_text_detection`** 사용 — 밀집 텍스트(책/문서)에 최적화된 OCR
+- **`document_text_detection`** — 밀집 텍스트(책/문서)에 최적화된 OCR
 - **멀티스레드** 병렬 처리로 빠른 변환
 - **자연 정렬** — `page_1, page_2, ... page_10` 순서 보장
-- **개별 저장** 또는 **하나의 파일로 병합** 선택 가능
 - 실시간 진행률 표시 (ETA 포함)
 
 ## 사전 준비
@@ -38,52 +38,51 @@ pip install -r requirements.txt
 
 ## 사용법
 
-### 기본 사용 (개별 텍스트 파일로 저장)
+### ⭐ Searchable PDF 생성 (가장 많이 쓰는 기능)
+
+```bash
+python ocr.py ./screenshots --pdf --pdf-name "AWS_SAA_C03.pdf"
+```
+
+PNG 이미지 폴더를 넣으면 **텍스트 선택/복사/검색이 가능한 PDF**가 생성됩니다.
+
+```
+원본 이미지 (눈에 보이는 레이어)
+  + 투명 텍스트 (OCR 결과가 글자 위치에 정확히 겹침)
+  = Searchable PDF
+```
+
+### 개별 텍스트 파일로 저장
 
 ```bash
 python ocr.py ./screenshots
 ```
 
-이미지 1개당 텍스트 파일 1개가 `./screenshots/ocr_output/` 폴더에 생성됩니다.
-
-### 하나의 파일로 병합
+### 하나의 텍스트 파일로 병합
 
 ```bash
 python ocr.py ./screenshots --merge --merge-name "AWS_SAA_C03.txt"
 ```
 
-모든 페이지가 순서대로 하나의 텍스트 파일에 합쳐집니다.
-
-### 출력 폴더 지정
+### PDF + 텍스트 동시 생성
 
 ```bash
-python ocr.py ./screenshots -o ./output
+python ocr.py ./screenshots --pdf --merge --pdf-name "book.pdf" --merge-name "book.txt"
 ```
 
 ### 전체 옵션
 
 ```
 python ocr.py --help
-
-사용 예시:
-  # 개별 텍스트 파일로 저장 (이미지 1개 = 텍스트 1개)
-  python ocr.py ./screenshots
-
-  # 하나의 파일로 병합
-  python ocr.py ./screenshots --merge
-
-  # 출력 폴더 지정 + 병합 파일명 지정
-  python ocr.py ./screenshots -o ./output --merge --merge-name "AWS_SAA_C03.txt"
-
-  # 동시 처리 스레드 수 조절 (기본: 4)
-  python ocr.py ./screenshots --workers 2
 ```
 
 | 옵션 | 설명 | 기본값 |
 |---|---|---|
 | `input_dir` | 스크린샷 이미지 폴더 경로 | (필수) |
-| `-o, --output-dir` | OCR 결과 저장 폴더 | `<input_dir>/ocr_output` |
-| `--merge` | 모든 페이지를 하나의 파일로 병합 | `false` |
+| `-o, --output-dir` | 결과 저장 폴더 | `<input_dir>/ocr_output` |
+| `--pdf` | Searchable PDF 생성 | `false` |
+| `--pdf-name` | PDF 파일명 | `output.pdf` |
+| `--merge` | 모든 페이지를 텍스트 파일 하나로 병합 | `false` |
 | `--merge-name` | 병합 파일명 | `merged_output.txt` |
 | `--workers` | 동시 처리 스레드 수 | `4` |
 | `--delay` | API 호출 간 대기(초) | `0.1` |
@@ -101,15 +100,10 @@ screenshots/
 ├── ...
 └── page_595.png
 
-# 실행 후
+# python ocr.py ./screenshots --pdf --pdf-name "AWS_SAA_C03.pdf" 실행 후
 screenshots/
-├── ocr_output/
-│   ├── page_001.txt        # 개별 모드
-│   ├── page_002.txt
-│   ├── ...
-│   └── AWS_SAA_C03.txt     # --merge 모드
-├── page_001.png
-└── ...
+└── ocr_output/
+    └── AWS_SAA_C03.pdf   ← 텍스트 선택 가능한 PDF
 ```
 
 ## 주의사항
