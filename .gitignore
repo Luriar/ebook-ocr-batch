@@ -14,6 +14,7 @@ env/
 # Google Cloud credentials (절대 커밋 금지!)
 *.json
 !config.example.json
+.env
 
 # IDE
 .vscode/

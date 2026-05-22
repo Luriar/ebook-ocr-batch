@@ -13,6 +13,13 @@ import time
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# .env 파일 자동 로드
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv 없어도 환경변수 직접 설정하면 동작
+
 try:
     from google.cloud import vision
 except ImportError:
