@@ -1,14 +1,14 @@
 # ebook-ocr-batch
 
-eBook 스크린샷을 Google Cloud Vision API로 OCR 처리하여 **텍스트 선택/검색이 가능한 Searchable PDF**로 변환하는 도구입니다.
+eBook 스크린샷을 Google Cloud Vision API로 OCR 처리해 텍스트 선택/검색이 가능한 Searchable PDF로 변환하는 도구입니다.
 
 ## 특징
 
-- **Searchable PDF 생성** — 원본 이미지 위에 투명 텍스트 레이어를 입혀 텍스트 드래그/복사/검색 가능
+- **Searchable PDF 생성**: 원본 이미지 위에 투명 텍스트 레이어를 입혀 텍스트 드래그/복사/검색 가능
 - **한국어 + 영어 혼용** 자동 인식 (AWS 전문 용어 등)
-- **`document_text_detection`** — 밀집 텍스트(책/문서)에 최적화된 OCR
+- **`document_text_detection`**: 밀집 텍스트(책/문서)에 최적화된 OCR
 - **멀티스레드** 병렬 처리로 빠른 변환
-- **자연 정렬** — `page_1, page_2, ... page_10` 순서 보장
+- **자연 정렬**: `page_1, page_2, ... page_10` 순서 보장
 - 실시간 진행률 표시 (ETA 포함)
 
 ## 사전 준비
@@ -16,8 +16,8 @@ eBook 스크린샷을 Google Cloud Vision API로 OCR 처리하여 **텍스트 �
 ### 1. Google Cloud Vision API 활성화
 
 1. [Google Cloud Console](https://console.cloud.google.com/)에서 프로젝트를 생성합니다.
-2. **Cloud Vision API**를 활성화합니다.
-3. **서비스 계정 키**(JSON)를 발급받아 다운로드합니다.
+2. Cloud Vision API를 활성화합니다.
+3. 서비스 계정 키(JSON)를 발급받아 다운로드합니다.
 4. 환경 변수를 설정합니다:
 
 ```powershell
@@ -28,7 +28,7 @@ $env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\your-key.json"
 [System.Environment]::SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", "C:\path\to\your-key.json", "User")
 ```
 
-> **비용**: 월 **1,000건 무료**. 595페이지 책 한 권은 무료 한도 안에 들어갑니다.
+> **비용**: 월 1,000건 무료. 595페이지 책 한 권은 무료 한도 안에 들어갑니다.
 
 ### 2. 패키지 설치
 
@@ -38,13 +38,13 @@ pip install -r requirements.txt
 
 ## 사용법
 
-### ⭐ Searchable PDF 생성 (가장 많이 쓰는 기능)
+### Searchable PDF 생성 (가장 많이 쓰는 기능)
 
 ```bash
 python ocr.py ./screenshots --pdf --pdf-name "AWS_SAA_C03.pdf"
 ```
 
-PNG 이미지 폴더를 넣으면 **텍스트 선택/복사/검색이 가능한 PDF**가 생성됩니다.
+PNG 이미지 폴더를 넣으면 텍스트 선택/복사/검색이 가능한 PDF가 생성됩니다.
 
 ```
 원본 이미지 (눈에 보이는 레이어)
@@ -110,7 +110,7 @@ screenshots/
 
 - **Google Cloud 서비스 계정 키(JSON)는 절대 공개 저장소에 커밋하지 마세요.** `.gitignore`에 이미 `*.json`이 포함되어 있습니다.
 - 월 1,000건 초과 시 [Cloud Vision 가격 정책](https://cloud.google.com/vision/pricing)을 확인하세요.
-- 4K 해상도 스크린샷을 사용하면 OCR 정확도가 극대화됩니다.
+- 4K 해상도 스크린샷을 사용하면 OCR 정확도가 올라갑니다.
 
 ## License
 
